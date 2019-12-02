@@ -1,3 +1,8 @@
+### Chronicle
+![42150754](https://user-images.githubusercontent.com/7096476/64911747-ef4be100-d725-11e9-98f3-43331714afa7.png)
+
+
+
 Chronicle is simple **process manager/saga pattern** implementation for .NET Core that helps you manage long-living and disitrbuted transactions.
 
 |   | master  | develop  |
@@ -9,22 +14,23 @@ Chronicle is simple **process manager/saga pattern** implementation for .NET Cor
 Chornicle is available on [NuGet](https://www.nuget.org/packages/Chronicle_/)
 ### Package manager
 ```bash
-Install-Package Chronicle_ -Version 1.8.0
+Install-Package Chronicle_ -Version 2.1.0
 ```
 
 ### .NET CLI
 ```bash
-dotnet add package Chronicle_ --version 1.8.0
+dotnet add package Chronicle_ --version 2.1.0
 ```
 
 # Getting started
-In order to create and process saga you need to go through few steps:
-1. Create a class that dervies either from ``Saga`` or ``Saga<TData>``.
-2. Inside saga implement particular steps that needs to be done or compensated in case of error. The initial step must be implemented as ``ISagaStartAction<TMessage>`` while the rest ``ISagaAction<TMessage>``. It's worth mentioning that up can implement as many start actions as you want. In this case first incomming message is going to initialize saga.
-3. Register all your sagas in ``Startup.cs`` by calling ``services.AddChronicle()``.
-4. Inject ``ISagaCoordinator`` and inoke ``ProcessAsync()`` methods passing a message. Cooridnator will take care of everything by looking for all implemented sagas that can handle given message.
+In order to create and process a saga you need to go through a few steps:
+1. Create a class that dervies from either ``Saga`` or ``Saga<TData>``.
+2. Inside your saga implemention, inherit from one or several ``ISagaStartAction<TMessage>`` and ``ISagaAction<TMessage>`` to implement ``HandleAsync()`` and ``CompensateAsync()`` methods for each message type. An initial step must be implemented as an ``ISagaStartAction<TMessage>``, while the rest can be ``ISagaAction<TMessage>``. It's worth mentioning that you can implement as many ``ISagaStartAction<TMessage>`` as you want. In this case, the first incoming message is going to initialize the saga and any subsequent ``ISagaStartAction<TMessage>`` or ``ISagaAction<TMessage>`` will only update the current saga state.
+3. Register all your sagas in ``Startup.cs`` by calling ``services.AddChronicle()``. By default, ``AddChronicle()`` will use the ``InMemorySagaStateRepository`` and ``InMemorySagaLog`` for maintaining ``SagaState`` and for logging ``SagaLogData`` in the ``SagaLog``. The ``SagaLog`` maintains a historical record of which message handlers have been executed. Optionally, ``AddChronicle()`` accepts an ``Action<ChronicleBuilder>`` parameter which provides access to ``UseSagaStateRepository<ISagaStateRepository>()`` and ``UseSagaLog<ISagaLog>()`` for custom implementations of ``ISagaStateRepository`` and ``ISagaLog``. **If either method is called, then both methods need to be called**.
+4. Inject ``ISagaCoordinator`` and invoke ``ProcessAsync()`` methods passing a message. The coordinator will take care of everything by looking for all implemented sagas that can handle a given message.
+5. To complete a successful saga, call ``CompleteSaga()`` or ``CompleteSagaAsync()``. This will update the ``SagaState`` to Completed. To flag a saga which has failed or been rejected, call the ``Reject()`` or ``RejectAsync()`` methods to update the ``SagaState`` to Rejected. Doing so will utilize the ``SagaLog`` to call each message type's ``CompensateAsync()`` in the reverse order of their respective ``HandleAsync()`` method was called. Additionally, an unhanded exception thrown from a ``HandleAsync()`` method will cause ``Reject()`` to be called and begin the compensation.
 
-Bellow is the very simple example of saga that completes once both messages (``Message1`` and ``Message2``) are received:
+Below is the very simple example of saga that completes once both messages (``Message1`` and ``Message2``) are received:
 
 ```csharp
 public class Message1
@@ -98,7 +104,7 @@ The result looks as follows:
 ![Result](https://user-images.githubusercontent.com/7096476/53180548-0c885900-35f6-11e9-864b-6b6d13641f2a.png)
 
 # Documentation
-If you're looking for documentation, you can find it [here](chronicle.readthedocs.io).
+If you're looking for documentation, you can find it [here](https://chronicle.readthedocs.io/en/latest/).
 
 # Icon
 Icon made by Smashicons from [www.flaticon.com](http://flaticon.com) is licensed by [Creative Commons BY 3.0](http://creativecommons.org/licenses/by/3.0/)
